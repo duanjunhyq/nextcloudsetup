@@ -1,0 +1,49 @@
+version: '3'
+
+services:
+  db:
+    image: mariadb
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_USER: your_username
+      MYSQL_PASSWORD: password
+    ports:
+      - 3306:3306
+    volumes:
+      - ./data:/var/lib/mysql
+      - ./my.cnf:/etc/mysql/mysql.conf.d/mysqld.cnf
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    ports:
+      - 8080:80
+    environment:
+      PMA_HOST: db
+      MYSQL_ROOT_PASSWORD: password
+    depends_on:
+      - db
+
+  nextcloud:
+    image: nextcloud:latest
+    environment:
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=user
+      - MYSQL_HOST=db
+      - MYSQL_PASSWORD=password
+      - NEXTCLOUD_TRUSTED_DOMAINS=your_domain
+    restart: always
+    links: 
+      - db
+    volumes:
+      - ./nextcloud-core:/var/www/html
+      - ./nextcloud-apps:/var/www/html/custom_apps
+      - ./nextcloud-data:/var/www/html/data
+      - ./nextcloud-config:/var/www/html/config
+    ports:
+      - 80:80
+    depends_on:
+      - db
+
