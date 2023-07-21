@@ -25,6 +25,15 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     depends_on:
       - db
+  
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - 6379:6379
+    volumes: 
+      - ./redis:/data
+    restart: unless-stopped
 
   nextcloud:
     image: nextcloud:latest
@@ -34,16 +43,47 @@ services:
       - MYSQL_HOST=db
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - NEXTCLOUD_TRUSTED_DOMAINS=${NEXTCLOUD_TRUSTED_DOMAINS}
+      - VIRTUAL_HOST=${COLLABORA_HOST}
+      - VIRTUAL_PORT=80
+      - VIRTUAL_PROTO=http
+      - LETSENCRYPT_HOST=${COLLABORA_HOST}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+      - RESOLVE_TO_PROXY_IP=true
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     restart: always
     links: 
       - db
+      - redis
     volumes:
       - ./nextcloud-core:/var/www/html
       - ./nextcloud-apps:/var/www/html/custom_apps
       - ./nextcloud-data:/var/www/html/data
       - ./nextcloud-config:/var/www/html/config
     ports:
-      - 80:80
+      - 81:80
     depends_on:
       - db
-
+      - office
+      - redis
+  
+  office:
+    image: collabora/code:latest
+    restart: always
+    environment:
+      - domain=office\\.cidogh\\.ca
+      - username=${COLLABORA_USERNAME}
+      - password=${COLLABORA_PASSWORD}
+      - extra_params=--o:ssl.enable=false --o:ssl.termination=true
+      - SLEEPFORDEBUGGER=0"
+      - VIRTUAL_HOST=${COLLABORA_HOST}
+      - VIRTUAL_PORT=9980
+      - VIRTUAL_PROTO=https
+      - LETSENCRYPT_HOST=${COLLABORA_HOST}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+      - RESOLVE_TO_PROXY_IP=true
+      - NETWORK_ACCESS=internal
+    ports:
+      - 9980:9980
+    cap_add:
+      - MKNOD
